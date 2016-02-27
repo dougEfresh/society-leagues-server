@@ -229,12 +229,12 @@ public class TeamMatchResource {
         LocalDateTime  now  = LocalDateTime.now().minusDays(1);
         results = leagueService.findAll(TeamMatch.class).stream().parallel()
                 .filter(tm -> tm.getSeason().equals(s))
-                .filter(tm->tm.getMatchDate() != null)
                 .sorted(new Comparator<TeamMatch>() {
                     @Override
                     public int compare(TeamMatch teamMatch, TeamMatch t1) {
                         if (t1.getMatchDate() == null || teamMatch.getMatchDate() == null)
-                            return -1;
+                            return t1.getId().compareTo(teamMatch.getId());
+
                         return t1.getMatchDate().compareTo(teamMatch.getMatchDate());
                     }
                 }).collect(Collectors.toList());
