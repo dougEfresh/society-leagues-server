@@ -29,7 +29,6 @@ bootRun {
 }
 dependencies {
     compile project(':client')
-    compile project(':spring-client')
     compile 'org.slf4j:slf4j-api:1.7.7'
     //DB
     compile 'mysql:mysql-connector-java:5.1.32'
