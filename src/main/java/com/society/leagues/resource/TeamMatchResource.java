@@ -241,7 +241,7 @@ public class TeamMatchResource {
             boolean hasPlayerResults = leagueService.findCurrent(PlayerResult.class).parallelStream().filter(r->r.getTeamMatch().equals(result)).count() > 0;
             result.setHasPlayerResults(hasPlayerResults);
         }
-        Map<String,List<TeamMatch>> group = results.stream().collect(Collectors.groupingBy(tm -> tm.getMatchDate().toLocalDate().toString()));
+        Map<String,List<TeamMatch>> group = results.stream().filter(tm->tm.getMatchDate() !=null).collect(Collectors.groupingBy(tm -> tm.getMatchDate().toLocalDate().toString()));
 
         return (Map<String,List<TeamMatch>>) new TreeMap<>(group);
     }
