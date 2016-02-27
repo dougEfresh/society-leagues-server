@@ -46,6 +46,13 @@ public class LeagueService {
                         .forEach(u->{t.getMembers().removeMember(u);
                             repo.save(t.getMembers());})
         );
+        List<TeamMatch> teamMatches = findAll(TeamMatch.class).stream().filter(t->
+                t.getMatchDate() == null || t.getHome() == null || t.getAway() == null
+        ).collect(Collectors.toList());
+        for (TeamMatch teamMatch : teamMatches) {
+            logger.info("Removing tm with no date: " + teamMatch.getId());
+            purge(teamMatch);
+        }
         purge(new Season("-1"));
         purge(new Team("-1"));
         purge(new User("-1"));
