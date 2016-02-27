@@ -51,7 +51,7 @@ public class LeagueService {
         ).collect(Collectors.toList());
         for (TeamMatch teamMatch : teamMatches) {
             logger.info("Removing tm with no date: " + teamMatch.getId());
-            purge(teamMatch);
+            //purge(teamMatch);
         }
         purge(new Season("-1"));
         purge(new Team("-1"));
