@@ -14,6 +14,7 @@ import com.society.leagues.service.UserService;
 import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,12 +69,10 @@ public abstract class BaseTest {
 
     @After
     public void purgeMatches() {
+        login("admin.admin@example.com","abc123");
         List<Season> seasons = seasonApi.get();
         for (Season season : seasons) {
-            List<TeamMatch> matches = teamMatchApi.matchesBySeasonList(season.getId());
-            for (TeamMatch teamMatch : matches) {
-                teamMatchApi.delete(teamMatch.getId());
-            }
+            seasonApi.deleteSchedule(season.getId());
         }
     }
 
