@@ -18,7 +18,7 @@ public class StatService {
     final static Logger logger = Logger.getLogger(StatService.class);
     final AtomicReference<List<Stat>> lifetimeDivisionStats = new AtomicReference<>(new CopyOnWriteArrayList<>());
     final AtomicReference<List<Stat>> userStats = new AtomicReference<>(new CopyOnWriteArrayList<>());
-    final AtomicReference<List<Stat>>  handicapStats = new AtomicReference<>(new ArrayList<>(5000));
+    public final AtomicReference<List<Stat>>  handicapStats = new AtomicReference<>(new ArrayList<>(5000));
     final AtomicReference<Map<Season,List<Stat>>> userSeasonStat = new AtomicReference<>(new HashMap<>());
     final AtomicReference<Map<Season,List<Stat>>> userSeasonStatPast = new AtomicReference<>(new HashMap<>());
     @Autowired ThreadPoolTaskExecutor threadPoolTaskExecutor;
@@ -53,13 +53,15 @@ public class StatService {
         long start = System.currentTimeMillis();
         long startTime = System.currentTimeMillis();
         logger.info("UserSeasonStats  " + (System.currentTimeMillis() - startTime));
-        resultService.refresh();
+        //resultService.refresh();
         logger.info("Done Refreshing stats  (" + (System.currentTimeMillis() - start) + "ms)");
         userStats.get().clear();
         List<Stat> userStats = new ArrayList<>();
+        logger.info("Getting user stats");
         for (Season season : leagueService.findAll(Season.class).stream().filter(s->!s.isActive()).collect(Collectors.toList())) {
             userStats.addAll(getSeasonStats(season,false));
         }
+        logger.info("Done Getting user stats");
         this.userStats.lazySet(userStats);
     }
 
@@ -68,7 +70,6 @@ public class StatService {
     }
 
     public List<Stat> getSeasonStats(final Season season, boolean cache) {
-        resultService.refresh();
         List<User> users = leagueService.findAll(User.class).stream().filter(User::isReal).filter(u->u.hasSeason(season)).collect(Collectors.toList());
         List<Stat> stats = new ArrayList<>(100);
         for (User user : users) {
@@ -115,10 +116,8 @@ public class StatService {
             stats.add(buildSeasonStats(user,teams,season,results,null));
         }
 
-        if (season.isChallenge() || season.isNine()) {
-            resultService.refresh();
-            refreshMatchPoints(user,stats.stream().filter(s->s.getType() == StatType.USER_SEASON).filter(s->s.getSeason().equals(season)).findAny().get(),season);
-        }
+
+        refreshMatchPoints(user,stats.stream().filter(s->s.getType() == StatType.USER_SEASON).filter(s->s.getSeason().equals(season)).findAny().get(),season);
         stats.addAll(this.handicapStats.get().stream()
                 .filter(st->st.getUser().equals(user))
                 .filter(st->st.getSeason().equals(season))
@@ -187,25 +186,28 @@ public class StatService {
 
     @Scheduled(fixedRate = 1000*60*100, initialDelay = 1000*60*3)
     public void refreshHandicapStats() {
-        logger.info("refresh handicap stats");
-        List<User> users = leagueService.findAll(User.class).stream().filter(User::isReal).collect(Collectors.toList());
-        List<PlayerResult> results = leagueService.findAll(PlayerResult.class);
-        List<Stat> handicapStats = new ArrayList<>(4000);
-        for (User user : users) {
-            for (Season season : user.getSeasons()) {
-                Map<Handicap,List<PlayerResult>> userHandicapResults = results.parallelStream()
-                        .filter(r->r.hasUser(user))
-                        .filter(r->r.getSeason() != null)
-                        .filter(r->r.getSeason().equals(season))
-                        .collect(Collectors.groupingBy(r->r.getOpponentHandicap(user)));
+        threadPoolTaskExecutor.submit((Runnable) () -> {
+            logger.info("refresh handicap stats");
+            List<User> users = leagueService.findAll(User.class).stream().filter(User::isReal).collect(Collectors.toList());
+            List<PlayerResult> results = leagueService.findAll(PlayerResult.class);
+            List<Stat> hs = new ArrayList<>(4000);
+            for (User user : users) {
+                for (Season season : user.getSeasons()) {
+                    Map<Handicap,List<PlayerResult>> userHandicapResults = results.parallelStream()
+                            .filter(r->r.hasUser(user))
+                            .filter(r->r.getSeason() != null)
+                            .filter(r->r.getSeason().equals(season))
+                            .collect(Collectors.groupingBy(r->r.getOpponentHandicap(user)));
 
-                for (Handicap handicap : userHandicapResults.keySet()) {
-                    handicapStats.add(buildHandicapStats(user,season,userHandicapResults.get(handicap),StatType.HANDICAP,handicap));
+                    for (Handicap handicap : userHandicapResults.keySet()) {
+                        hs.add(buildHandicapStats(user,season,userHandicapResults.get(handicap),StatType.HANDICAP,handicap));
+                    }
                 }
             }
-        }
-        this.handicapStats.lazySet(handicapStats);
-        logger.info("done with handicap");
+            handicapStats.lazySet(hs);
+            logger.info("done with handicap");
+        });
+
     }
 
     public void setEnableRefresh(boolean enableRefresh) {

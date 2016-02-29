@@ -15,10 +15,11 @@ public class TestTeamMatch extends BaseTest {
 
     @Test
     public void testCreate() {
-        Season season = seasonApi.active().stream().filter(s->!s.isChallenge()).findAny().get();
+        Season season = seasonApi.active().stream().filter(s->s.isScramble()).findAny().get();
         List<Team> teams = teamApi.seasonTeams(season.getId());
         TeamMatch tm = new TeamMatch(teams.get(0), teams.get(1), LocalDateTime.now());
         tm.setHomeRacks(1);
+        tm.setDivision(Division.MIXED_NINE);
         List<TeamMatch> matches = teamMatchApi.save(Collections.singletonList(tm));
         TeamMatch newTm = matches.iterator().next();
         assertEquals(season,newTm.getSeason());
@@ -30,6 +31,7 @@ public class TestTeamMatch extends BaseTest {
         assertTrue(newTm.getAwayForfeits() == 0);
         assertTrue(newTm.getSetAwayWins() == 0);
         assertTrue(newTm.getSetHomeWins() == 0);
+        assertEquals(Division.MIXED_NINE, newTm.getDivision());
         assertTrue(tm.getMatchDate().isEqual(newTm.getMatchDate()));
         List<TeamMatch> homeTeamMatches  = teamMatchApi.getTeamMatchByTeam(teams.get(0).getId());
         assertTrue(homeTeamMatches.stream().filter(m->m.getId().equals(newTm.getId())).count() == 1);

@@ -74,7 +74,7 @@ public class TeamMatchResource {
         List<TeamMatch> processed = new ArrayList<>(teamMatch.size());
         processed.addAll(teamMatch.stream().map(this::modify).collect(Collectors.toList()));
         logger.info("Refreshing team stats");
-        resultService.refresh();
+        //resultService.refresh();
         for (TeamMatch match : processed) {
             statService.refreshTeamStats(match.getHome());
             statService.refreshTeamStats(match.getAway());
