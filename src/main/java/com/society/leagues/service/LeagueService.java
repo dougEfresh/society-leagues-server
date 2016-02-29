@@ -13,10 +13,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
@@ -53,6 +50,20 @@ public class LeagueService {
             logger.info("Removing tm with no date: " + teamMatch.getId());
             //purge(teamMatch);
         }
+
+        Map<String,List<TeamMatch>> matches = teamMatches.stream().filter(s->s.getSeason().isActive()).filter(s->s.getSeason().isScramble())
+                .sorted(TeamMatch.sortAcc())
+                .collect(Collectors.groupingBy(tm->tm.getMatchDate().toLocalDate().toString()));
+        Map<String,List<TeamMatch>> sorted = new TreeMap<>(matches);
+        Division division = Division.MIXED_NINE;
+        for (String s : sorted.keySet()) {
+            division = division == Division.MIXED_NINE ? Division.MIXED_EIGHT : Division.MIXED_NINE;
+            for (TeamMatch match : sorted.get(s)) {
+                match.setDivision(division);
+            }
+            save(sorted.get(s));
+        }
+
         purge(new Season("-1"));
         purge(new Team("-1"));
         purge(new User("-1"));

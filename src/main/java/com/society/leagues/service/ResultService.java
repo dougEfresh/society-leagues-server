@@ -59,7 +59,7 @@ public class ResultService {
         List<User> users = leagueService.findAll(User.class);
         List<User> challengeUsers = users.stream().filter(User::isChallenge).collect(Collectors.toList());
         List<User> nineUsers = users.stream().filter(u->u.hasSeason(nineSeason)).collect(Collectors.toList());
-        //Stream<User> eightUsers =users.filter(u->u.getSeasons().stream().filter(s->s.getDivision().isEight()).count() > 0);
+        List<User> eightUsers =users.stream().filter(u->u.getSeasons().stream().filter(s->s.getDivision().isEight()).count() > 0).collect(Collectors.toList());
         challengeUsers.forEach(user -> {
             List<PlayerResult> results = allResults.stream().parallel()
                     .filter(r -> r.getSeason().isChallenge())
@@ -79,16 +79,17 @@ public class ResultService {
             calcPoints(user, results, nineSeason);
         });
 
-        /*
-        eightUsers.forEach(user-> {
-            List<PlayerResult> results = allResults.stream().parallel()
-                    .filter(pr -> pr.hasUser(user))
-                    .filter(pr -> pr.getSeason().equals(nineSeason))
-                    .sorted((playerResult, t1) -> t1.getTeamMatch().getMatchDate().compareTo(playerResult.getTeamMatch().getMatchDate()))
-                    .collect(Collectors.toList());
-            calcPoints(user, results, nineSeason);
-        });
-        */
+
+        for (User eightUser : eightUsers) {
+            for (Season season : eightUser.getSeasons().stream().filter(s->s.getDivision().isEight()).collect(Collectors.toList())) {
+                List < PlayerResult > results = allResults.stream().parallel()
+                        .filter(pr -> pr.hasUser(eightUser))
+                        .filter(pr -> pr.getSeason().equals(season))
+                        .sorted((playerResult, t1) -> t1.getTeamMatch().getMatchDate().compareTo(playerResult.getTeamMatch().getMatchDate()))
+                        .collect(Collectors.toList());
+                calcPoints(eightUser, results, season);
+            }
+        }
     }
 
     private void calcPoints(User user, List<PlayerResult> results, Season season) {
