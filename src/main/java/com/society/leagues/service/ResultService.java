@@ -1,6 +1,7 @@
 package com.society.leagues.service;
 
 import com.society.leagues.client.api.domain.*;
+import com.society.leagues.listener.DaoListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -8,21 +9,65 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 
 @Component
 public class ResultService {
     @Autowired LeagueService leagueService;
-    public static double period = 10;
+    static double period = 10;
     List<MatchPoints> matchPointsCache = new ArrayList<>();
 
     @PostConstruct
     @Scheduled(fixedRate = 1000*60*10, initialDelay = 1000*60*3)
     public void init() {
         refresh();
+        leagueService.addListener(
+        new DaoListener() {
+            @Override
+            public void onAdd(LeagueObject object) {
+                if (object instanceof PlayerResult) {
+                    PlayerResult pr = (PlayerResult) object;
+                    calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p->p.getSeason().equals(pr.getSeason()))
+                            .filter(p->p.hasUser(pr.getPlayerHome()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                    calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p->p.getSeason().equals(pr.getSeason()))
+                            .filter(p->p.hasUser(pr.getPlayerAway()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                }
+            }
+
+            @Override
+            public void onChange(LeagueObject object) {
+                if (object instanceof PlayerResult) {
+                    PlayerResult pr = (PlayerResult) object;
+                    calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p->p.getSeason().equals(pr.getSeason()))
+                            .filter(p->p.hasUser(pr.getPlayerHome()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                    calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p->p.getSeason().equals(pr.getSeason()))
+                            .filter(p->p.hasUser(pr.getPlayerAway()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                }
+            }
+
+            @Override
+            public void onDelete(LeagueObject object) {
+                PlayerResult pr = (PlayerResult) object;
+                calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
+                        .filter(p->p.getSeason().equals(pr.getSeason()))
+                        .filter(p->p.hasUser(pr.getPlayerHome()))
+                        .collect(Collectors.toList()), pr.getSeason());
+                calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
+                        .filter(p->p.getSeason().equals(pr.getSeason()))
+                        .filter(p->p.hasUser(pr.getPlayerAway()))
+                        .collect(Collectors.toList()), pr.getSeason());
+            }
+        });
+
     }
 
     public Collection<PlayerResult> createNewPlayerResults(TeamMatch teamMatch) {
@@ -55,6 +100,7 @@ public class ResultService {
                         .filter(pr -> pr.getMatchDate() != null)
                         .filter(PlayerResult::hasResults)
                         .collect(Collectors.toList());
+
         Season nineSeason = leagueService.findAll(Season.class).stream().filter(Season::isActive).filter(s->s.getDivision() == Division.NINE_BALL_TUESDAYS).findAny().orElse(null);
         List<User> users = leagueService.findAll(User.class);
         List<User> challengeUsers = users.stream().filter(User::isChallenge).collect(Collectors.toList());
@@ -98,12 +144,12 @@ public class ResultService {
             MatchPoints mp = new MatchPoints();
             int points = 1;
             String[] r = challengeResult.getRace().split("/");
-            int handciapGames = 0;
+            int hcGames = 0;
             if (r.length == 0) {
-                handciapGames = 0;
+                hcGames = 0;
             } else {
                 try {
-                    handciapGames = Integer.parseInt(r[0]);
+                    hcGames = Integer.parseInt(r[0]);
                 } catch (NumberFormatException e) {
                 }
             }
@@ -112,7 +158,7 @@ public class ResultService {
                     points += 1;
                 } else {
                     if (challengeResult.getLoserHandicap().ordinal() < challengeResult.getWinnerHandicap().ordinal()) {
-                        if (challengeResult.getLoserRacks() - handciapGames <= 0)
+                        if (challengeResult.getLoserRacks() - hcGames <= 0)
                             points += 1;
                     }
                 }
@@ -148,7 +194,7 @@ public class ResultService {
             PlayerResult existing =  leagueService.findOne(result);
             if (existing == null) {
                 existing = new PlayerResult();
-                existing.setTeamMatch(leagueService.findOne(result.getTeamMatch()));;
+                existing.setTeamMatch(leagueService.findOne(result.getTeamMatch()));
             }
             User u = leagueService.findOne(result.getPlayerHome());
             if (u == null)
@@ -187,12 +233,7 @@ public class ResultService {
                 .collect(Collectors.toList());
         int matchNumber = 1;
         if (!results.isEmpty()) {
-            matchNumber = results.stream().max(new Comparator<PlayerResult>() {
-                @Override
-                public int compare(PlayerResult o1, PlayerResult o2) {
-                    return o1.getMatchNumber().compareTo(o2.getMatchNumber());
-                }
-            }).get().getMatchNumber() +1;
+            matchNumber = results.stream().max((o1, o2) -> o1.getMatchNumber().compareTo(o2.getMatchNumber())).get().getMatchNumber() +1;
         }
         PlayerResult result = new PlayerResult();
         result.setMatchNumber(matchNumber);
