@@ -58,6 +58,7 @@ public class LeagueService {
         Division division = Division.MIXED_NINE;
         for (String s : sorted.keySet()) {
             division = division == Division.MIXED_NINE ? Division.MIXED_EIGHT : Division.MIXED_NINE;
+            logger.info("Setting division " + division);
             for (TeamMatch match : sorted.get(s)) {
                 match.setDivision(division);
             }
