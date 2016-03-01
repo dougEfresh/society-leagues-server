@@ -43,7 +43,8 @@ public class LeagueService {
                         .forEach(u->{t.getMembers().removeMember(u);
                             repo.save(t.getMembers());})
         );
-        List<TeamMatch> teamMatches = findAll(TeamMatch.class).stream().filter(t->
+        final MongoRepository<TeamMatch,String> matchRepo = cacheUtil.getCache(TeamMatch.class).getRepo();
+        List<TeamMatch> teamMatches = matchRepo.findAll().stream().filter(t->
                 t.getMatchDate() == null || t.getHome() == null || t.getAway() == null
         ).collect(Collectors.toList());
         for (TeamMatch teamMatch : teamMatches) {
@@ -51,7 +52,7 @@ public class LeagueService {
             //purge(teamMatch);
         }
 
-        Map<String,List<TeamMatch>> matches = teamMatches.stream().filter(s->s.getSeason().isActive()).filter(s->s.getSeason().isScramble())
+        Map<String,List<TeamMatch>> matches = matchRepo.findAll().stream().filter(s->s.getSeason().isActive()).filter(s->s.getSeason().isScramble())
                 .sorted(TeamMatch.sortAcc())
                 .collect(Collectors.groupingBy(tm->tm.getMatchDate().toLocalDate().toString()));
         Map<String,List<TeamMatch>> sorted = new TreeMap<>(matches);
