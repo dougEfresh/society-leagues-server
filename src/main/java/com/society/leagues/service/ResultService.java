@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class ResultService {
     @Autowired LeagueService leagueService;
     static double period = 10;
-    List<MatchPoints> matchPointsCache = new ArrayList<>();
+    Set<MatchPoints> matchPointsCache = new HashSet<>();
 
     @PostConstruct
     @Scheduled(fixedRate = 1000*60*10, initialDelay = 1000*60*3)
@@ -56,15 +56,17 @@ public class ResultService {
 
             @Override
             public void onDelete(LeagueObject object) {
-                PlayerResult pr = (PlayerResult) object;
-                calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
-                        .filter(p->p.getSeason().equals(pr.getSeason()))
-                        .filter(p->p.hasUser(pr.getPlayerHome()))
-                        .collect(Collectors.toList()), pr.getSeason());
-                calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
-                        .filter(p->p.getSeason().equals(pr.getSeason()))
-                        .filter(p->p.hasUser(pr.getPlayerAway()))
-                        .collect(Collectors.toList()), pr.getSeason());
+                if (object instanceof PlayerResult) {
+                    PlayerResult pr = (PlayerResult) object;
+                    calcPoints(pr.getPlayerHome(), leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p -> p.getSeason().equals(pr.getSeason()))
+                            .filter(p -> p.hasUser(pr.getPlayerHome()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                    calcPoints(pr.getPlayerAway(), leagueService.findAll(PlayerResult.class).stream()
+                            .filter(p -> p.getSeason().equals(pr.getSeason()))
+                            .filter(p -> p.hasUser(pr.getPlayerAway()))
+                            .collect(Collectors.toList()), pr.getSeason());
+                }
             }
         });
 
@@ -176,11 +178,12 @@ public class ResultService {
                 mp.setCalculation(String.format("(%s * (10-%s))/10", points, new Double(matchNum).intValue()));
             }
             matchNum++;
+            matchPointsCache.remove(mp);
             matchPointsCache.add(mp);
         }
     }
 
-    public List<MatchPoints> matchPoints() {
+    public Set<MatchPoints> matchPoints() {
         return matchPointsCache;
     }
 

@@ -141,7 +141,7 @@ public class PlayerResultResource {
 
         results.sort((playerResult, t1) -> t1.getMatchDate().compareTo(playerResult.getMatchDate()));
         if (s.isChallenge() || s.isNine()) {
-            List<MatchPoints> matchPointsList = resultService.matchPoints();
+            Set<MatchPoints> matchPointsList = resultService.matchPoints();
             for (PlayerResult challengeResult : results) {
                 challengeResult.setMatchPoints(
                         matchPointsList.parallelStream()

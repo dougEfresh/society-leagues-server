@@ -151,7 +151,7 @@ public class StatService {
     }
 
     private void refreshMatchPoints(User user, Stat stat, Season season) {
-        List<MatchPoints> points = resultService.matchPoints();
+        Set<MatchPoints> points = resultService.matchPoints();
         double totalPoints = 0d;
         List<MatchPoints> pointsList = points.stream().parallel()
                 .filter(p-> p.getUser() != null && p.getUser().equals(user))
