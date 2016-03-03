@@ -40,7 +40,7 @@ public class LeagueService {
         List<User> fakes = findAll(User.class).stream().filter(u->!u.isReal()).collect(Collectors.toList());
         final MongoRepository repo = cacheUtil.getCache(TeamMembers.class).getRepo();
         final MongoRepository<User,String> userRepo = cacheUtil.getCache(User.class).getRepo();
-        Map<String,List<User>> userMap = userRepo.findAll().stream().collect(Collectors.groupingBy(User::getLogin));
+        Map<String,List<User>> userMap = userRepo.findAll().stream().filter(u->u.getLogin() != null).filter(u->u.getLogin().length() > 4).collect(Collectors.groupingBy(User::getLogin));
         for (String s : userMap.keySet()) {
             if (userMap.get(s).size() == 1)
                 continue;
