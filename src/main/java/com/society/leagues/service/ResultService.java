@@ -27,7 +27,7 @@ public class ResultService {
 
             private void refresh(PlayerResult pr) {
                 calcPoints(pr.getPlayerHome(),pr.getSeason());
-                calcPoints(pr.getPlayerHome(),pr.getSeason());
+                calcPoints(pr.getPlayerAway(),pr.getSeason());
             }
             @Override
             public void onAdd(LeagueObject object) {
