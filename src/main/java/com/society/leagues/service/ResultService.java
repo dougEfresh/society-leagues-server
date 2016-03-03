@@ -24,18 +24,16 @@ public class ResultService {
         refresh();
         leagueService.addListener(
         new DaoListener() {
+
+            private void refresh(PlayerResult pr) {
+                calcPoints(pr.getPlayerHome(),pr.getSeason());
+                calcPoints(pr.getPlayerHome(),pr.getSeason());
+            }
             @Override
             public void onAdd(LeagueObject object) {
                 if (object instanceof PlayerResult) {
                     PlayerResult pr = (PlayerResult) object;
-                    calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p->p.getSeason().equals(pr.getSeason()))
-                            .filter(p->p.hasUser(pr.getPlayerHome()))
-                            .collect(Collectors.toList()), pr.getSeason());
-                    calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p->p.getSeason().equals(pr.getSeason()))
-                            .filter(p->p.hasUser(pr.getPlayerAway()))
-                            .collect(Collectors.toList()), pr.getSeason());
+                    refresh(pr);
                 }
             }
 
@@ -43,14 +41,7 @@ public class ResultService {
             public void onChange(LeagueObject object) {
                 if (object instanceof PlayerResult) {
                     PlayerResult pr = (PlayerResult) object;
-                    calcPoints(pr.getPlayerHome(),leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p->p.getSeason().equals(pr.getSeason()))
-                            .filter(p->p.hasUser(pr.getPlayerHome()))
-                            .collect(Collectors.toList()), pr.getSeason());
-                    calcPoints(pr.getPlayerAway(),leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p->p.getSeason().equals(pr.getSeason()))
-                            .filter(p->p.hasUser(pr.getPlayerAway()))
-                            .collect(Collectors.toList()), pr.getSeason());
+                    refresh(pr);
                 }
             }
 
@@ -58,14 +49,7 @@ public class ResultService {
             public void onDelete(LeagueObject object) {
                 if (object instanceof PlayerResult) {
                     PlayerResult pr = (PlayerResult) object;
-                    calcPoints(pr.getPlayerHome(), leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p -> p.getSeason().equals(pr.getSeason()))
-                            .filter(p -> p.hasUser(pr.getPlayerHome()))
-                            .collect(Collectors.toList()), pr.getSeason());
-                    calcPoints(pr.getPlayerAway(), leagueService.findAll(PlayerResult.class).stream()
-                            .filter(p -> p.getSeason().equals(pr.getSeason()))
-                            .filter(p -> p.hasUser(pr.getPlayerAway()))
-                            .collect(Collectors.toList()), pr.getSeason());
+                    refresh(pr);
                 }
             }
         });
@@ -109,38 +93,45 @@ public class ResultService {
         List<User> nineUsers = users.stream().filter(u->u.hasSeason(nineSeason)).collect(Collectors.toList());
         List<User> eightUsers =users.stream().filter(u->u.getSeasons().stream().filter(s->s.getDivision().isEight()).count() > 0).collect(Collectors.toList());
         challengeUsers.forEach(user -> {
-            List<PlayerResult> results = allResults.stream().parallel()
+            calcPoints(user, user.getSeasons().stream().filter(Season::isChallenge).findAny().get());
+        });
+
+        nineUsers.forEach(user-> {
+            calcPoints(user, nineSeason);
+        });
+
+        for (User eightUser : eightUsers) {
+            for (Season season : eightUser.getSeasons().stream().filter(s->s.getDivision().isEight()).collect(Collectors.toList())) {
+                calcPoints(eightUser,  season);
+            }
+        }
+    }
+
+    private void calcPoints(User user, Season season) {
+        List<PlayerResult> allResults =
+                leagueService.findAll(PlayerResult.class).stream().parallel()
+                        .filter(r->r.getTeamMatch() != null)
+                        .filter(r->r.getSeason() != null)
+                        .filter(r->r.getSeason().isActive())
+                        .filter(pr -> pr.getMatchDate() != null)
+                        .filter(PlayerResult::hasResults)
+                        .collect(Collectors.toList());
+        List<PlayerResult> results = new ArrayList<>();
+        if (season.isChallenge()){
+            LocalDateTime tenWeeks = LocalDateTime.now().plusDays(1).minusWeeks(10);
+            results = allResults.stream().parallel()
                     .filter(r -> r.getSeason().isChallenge())
                     .filter(pr -> pr.hasUser(user)).filter(PlayerResult::hasResults)
                     .filter(pr -> pr.getMatchDate().isAfter(tenWeeks))
                     .sorted((playerResult, t1) -> t1.getTeamMatch().getMatchDate().compareTo(playerResult.getTeamMatch().getMatchDate())).limit(7)
                     .collect(Collectors.toList());
-            calcPoints(user, results,user.getSeasons().stream().filter(Season::isChallenge).findAny().get());
-        });
-
-        nineUsers.forEach(user-> {
-            List<PlayerResult> results = allResults.stream().parallel()
-                    .filter(pr -> pr.hasUser(user))
-                    .filter(pr -> pr.getSeason().equals(nineSeason))
-                    .sorted((playerResult, t1) -> t1.getTeamMatch().getMatchDate().compareTo(playerResult.getTeamMatch().getMatchDate()))
-                    .collect(Collectors.toList());
-            calcPoints(user, results, nineSeason);
-        });
-
-
-        for (User eightUser : eightUsers) {
-            for (Season season : eightUser.getSeasons().stream().filter(s->s.getDivision().isEight()).collect(Collectors.toList())) {
-                List < PlayerResult > results = allResults.stream().parallel()
-                        .filter(pr -> pr.hasUser(eightUser))
+        } else {
+            results = allResults.stream().parallel()
+                        .filter(pr -> pr.hasUser(user))
                         .filter(pr -> pr.getSeason().equals(season))
                         .sorted((playerResult, t1) -> t1.getTeamMatch().getMatchDate().compareTo(playerResult.getTeamMatch().getMatchDate()))
                         .collect(Collectors.toList());
-                calcPoints(eightUser, results, season);
-            }
         }
-    }
-
-    private void calcPoints(User user, List<PlayerResult> results, Season season) {
         double matchNum = 0;
         for (PlayerResult challengeResult : results) {
             MatchPoints mp = new MatchPoints();
