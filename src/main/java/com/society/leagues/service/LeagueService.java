@@ -4,6 +4,7 @@ import com.society.leagues.exception.InvalidLeagueObject;
 import com.society.leagues.cache.CachedCollection;
 import com.society.leagues.cache.CacheUtil;
 import com.society.leagues.client.api.domain.*;
+import com.society.leagues.exception.InvalidRequestException;
 import com.society.leagues.listener.DaoListener;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,32 +39,30 @@ public class LeagueService {
         cacheUtil.initialize(mongoRepositories);
         List<User> fakes = findAll(User.class).stream().filter(u->!u.isReal()).collect(Collectors.toList());
         final MongoRepository repo = cacheUtil.getCache(TeamMembers.class).getRepo();
-        findAll(Team.class).stream().filter(t->t.getSeason() != null).filter(t->t.getSeason().isActive()).forEach(
-                t->fakes.stream()
-                        .forEach(u->{t.getMembers().removeMember(u);
-                            repo.save(t.getMembers());})
-        );
-        final MongoRepository<TeamMatch,String> matchRepo = cacheUtil.getCache(TeamMatch.class).getRepo();
-        List<TeamMatch> teamMatches = matchRepo.findAll().stream().filter(t->
-                t.getMatchDate() == null || t.getHome() == null || t.getAway() == null
-        ).collect(Collectors.toList());
-        for (TeamMatch teamMatch : teamMatches) {
-            logger.info("Removing tm with no date: " + teamMatch.getId());
-            //purge(teamMatch);
-        }
+        final MongoRepository<User,String> userRepo = cacheUtil.getCache(User.class).getRepo();
+        Map<String,List<User>> userMap = userRepo.findAll().stream().collect(Collectors.groupingBy(User::getLogin));
+        for (String s : userMap.keySet()) {
+            if (userMap.get(s).size() == 1)
+                continue;
 
-        Map<String,List<TeamMatch>> matches = matchRepo.findAll().stream().filter(s->s.getSeason().isActive()).filter(s->s.getSeason().isScramble())
-                .sorted(TeamMatch.sortAcc())
-                .collect(Collectors.groupingBy(tm->tm.getMatchDate().toLocalDate().toString()));
-        Map<String,List<TeamMatch>> sorted = new TreeMap<>(matches);
-        Division division = Division.MIXED_NINE;
-        for (String s : sorted.keySet()) {
-            division = division == Division.MIXED_NINE ? Division.MIXED_EIGHT : Division.MIXED_NINE;
-            logger.info("Setting division " + division);
-            for (TeamMatch match : sorted.get(s)) {
-                match.setDivision(division);
+            User user = userMap.get(s).get(0);
+            logger.info("Merging ---- "  + user.getName() + " ----- "+ user.getId());
+            for(int i=1; i < userMap.get(s).size(); i++ ) {
+                User dup = userMap.get(s).get(i);
+                dup.getHandicapSeasons().forEach(user::addHandicap);
+                findAll(TeamMembers.class).stream().filter(t->t.getMembers().contains(dup)).forEach(t->{t.getMembers().remove(dup); t.getMembers().add(user); save(t);});
+                findAll(PlayerResult.class).stream().filter(pr->pr.hasUser(dup))
+                        .forEach(pr->{
+                            if (dup.equals(pr.getPlayerHome())) { pr.setPlayerHome(user); }
+                            if (dup.equals(pr.getPlayerAway())) { pr.setPlayerAway(user); }
+                            if (dup.equals(pr.getPlayerAwayPartner())) { pr.setPlayerAwayPartner(user); }
+                            if (dup.equals(pr.getPlayerHomePartner())) { pr.setPlayerHomePartner(user); }
+                            save(pr);
+                        }
+                        );
+                purge(dup);
             }
-            save(sorted.get(s));
+            save(user);
         }
 
         purge(new Season("-1"));
@@ -86,6 +85,12 @@ public class LeagueService {
                 sb.append(constraintViolation.toString());
             }
             throw new InvalidLeagueObject("Could not validate " + entity + "\n" + sb.toString());
+        }
+        if (entity instanceof User) {
+            User u = (User) entity;
+            if (u.getId() == null && findByLogin(u.getLogin()) != null) {
+                throw new InvalidLeagueObject("User login already defined");
+            }
         }
         repo.save(entity);
         T newEntity = (T) repo.findOne(entity.getId());
