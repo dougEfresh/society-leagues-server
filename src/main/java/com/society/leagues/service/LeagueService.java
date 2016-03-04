@@ -46,7 +46,7 @@ public class LeagueService {
                 continue;
 
             User user = userMap.get(s).get(0);
-            logger.info("Merging ---- "  + user.getName() + " ----- "+ user.getId());
+            logger.info("Merging ---- "  + user.getName() + " ----- "+ user.getLogin() + " ---- " + user.getId());
             for(int i=1; i < userMap.get(s).size(); i++ ) {
                 User dup = userMap.get(s).get(i);
                 dup.getHandicapSeasons().forEach(user::addHandicap);
