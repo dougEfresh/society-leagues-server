@@ -138,7 +138,7 @@ public class StatService {
         return s;
     }
 
-     private Stat buildHandicapStats(User user,  Season season, List<PlayerResult> results, StatType statType,Handicap hc) {
+    private Stat buildHandicapStats(User user,  Season season, List<PlayerResult> results, StatType statType,Handicap hc) {
         Stat s = Stat.buildPlayerSeasonStats(user,
                 season,
                 results

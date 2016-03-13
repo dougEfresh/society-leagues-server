@@ -108,6 +108,16 @@ public class ResultService {
     }
 
     private void calcPoints(User user, Season season) {
+        List<MatchPoints> matchPointsList = matchPointsCache
+                .stream()
+                .filter(mp->mp.getUser().equals(user) && mp.getPlayerResult().getSeason().equals(season))
+                .collect(Collectors.toList());
+
+        for (MatchPoints matchPoints : matchPointsList) {
+            matchPoints.getPlayerResult().setMatchPoints(null);
+            matchPointsCache.remove(matchPoints);
+        }
+
         List<PlayerResult> allResults =
                 leagueService.findAll(PlayerResult.class).stream().parallel()
                         .filter(r->r.getTeamMatch() != null)
@@ -143,8 +153,7 @@ public class ResultService {
             } else {
                 try {
                     hcGames = Integer.parseInt(r[0]);
-                } catch (NumberFormatException e) {
-                }
+                } catch (NumberFormatException ignore) {}
             }
             if (challengeResult.isWinner(user)) {
                 if (challengeResult.getLoserRacks() == 0) {
@@ -169,7 +178,6 @@ public class ResultService {
                 mp.setCalculation(String.format("(%s * (10-%s))/10", points, new Double(matchNum).intValue()));
             }
             matchNum++;
-            matchPointsCache.remove(mp);
             matchPointsCache.add(mp);
         }
     }
