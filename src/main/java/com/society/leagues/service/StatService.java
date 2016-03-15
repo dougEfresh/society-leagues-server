@@ -103,10 +103,16 @@ public class StatService {
         List<Team> teams = leagueService.findAll(Team.class).stream().filter(t->t.getSeason().equals(season)).collect(Collectors.toList());
         if (season.isScramble())  {
             stats.add(buildSeasonStats(user,teams,season,
-                    results.stream().filter(pr->pr.getTeamMatch().getDivision() == Division.MIXED_EIGHT).collect(Collectors.toList()),
+                    results.stream()
+                            .filter(pr->pr.getTeamMatch().getDivision() == Division.MIXED_EIGHT)
+                            .filter(pr->!pr.isScotch())
+                            .collect(Collectors.toList()),
                     StatType.MIXED_EIGHT));
             stats.add(buildSeasonStats(user,teams,season,
-                    results.stream().filter(pr->pr.getTeamMatch().getDivision() == Division.MIXED_NINE).collect(Collectors.toList()),
+                    results.stream()
+                            .filter(pr->pr.getTeamMatch().getDivision() == Division.MIXED_NINE)
+                            .filter(pr->!pr.isScotch())
+                            .collect(Collectors.toList()),
                     StatType.MIXED_NINE));
             stats.add(buildSeasonStats(user,teams,season,
                     results.stream().filter(PlayerResult::isScotch).collect(Collectors.toList()),
