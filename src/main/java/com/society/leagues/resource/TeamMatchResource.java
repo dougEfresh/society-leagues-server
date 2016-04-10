@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,6 +30,7 @@ public class TeamMatchResource {
     @Autowired LeagueService leagueService;
     @Autowired ResultService resultService;
     @Autowired StatService statService;
+    @Autowired ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     @RequestMapping(value = "/admin/create", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ROLE_ADMIN')")
@@ -73,15 +75,7 @@ public class TeamMatchResource {
     public List<TeamMatch> modify(@RequestBody List<TeamMatch> teamMatch) {
         List<TeamMatch> processed = new ArrayList<>(teamMatch.size());
         processed.addAll(teamMatch.stream().map(this::modify).collect(Collectors.toList()));
-        logger.info("Refreshing team stats");
-        //resultService.refresh();
-        for (TeamMatch match : processed) {
-            statService.refreshTeamStats(match.getHome());
-            statService.refreshTeamStats(match.getAway());
-        }
-        if (processed.get(0).getSeason().isChallenge()) {
-            statService.refresh();
-        }
+        threadPoolTaskExecutor.submit((Runnable) () -> statService.refresh());
         return processed;
     }
 

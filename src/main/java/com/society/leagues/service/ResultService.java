@@ -26,30 +26,30 @@ public class ResultService {
         new DaoListener() {
 
             private void refresh(PlayerResult pr) {
-                calcPoints(pr.getPlayerHome(),pr.getSeason());
-                calcPoints(pr.getPlayerAway(),pr.getSeason());
+                //calcPoints(pr.getPlayerHome(),pr.getSeason());
+                //calcPoints(pr.getPlayerAway(),pr.getSeason());
             }
             @Override
             public void onAdd(LeagueObject object) {
                 if (object instanceof PlayerResult) {
-                    PlayerResult pr = (PlayerResult) object;
-                    refresh(pr);
+                  //  PlayerResult pr = (PlayerResult) object;
+                    //refresh(pr);
                 }
             }
 
             @Override
             public void onChange(LeagueObject object) {
                 if (object instanceof PlayerResult) {
-                    PlayerResult pr = (PlayerResult) object;
-                    refresh(pr);
+                    //PlayerResult pr = (PlayerResult) object;
+                    ///refresh(pr);
                 }
             }
 
             @Override
             public void onDelete(LeagueObject object) {
                 if (object instanceof PlayerResult) {
-                    PlayerResult pr = (PlayerResult) object;
-                    refresh(pr);
+                    //PlayerResult pr = (PlayerResult) object;
+                //    refresh(pr);
                 }
             }
         });
