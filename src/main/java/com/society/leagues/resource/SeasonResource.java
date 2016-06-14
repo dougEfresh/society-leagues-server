@@ -172,7 +172,6 @@ public class SeasonResource {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public Season create(Principal principal, @RequestBody Season season) {
         Season previous = leagueService.findAll(Season.class).stream()
-                .filter(Season::isActive)
                 .filter(s->s.getDivision() == season.getDivision())
                 .max((o1, o2) -> o2.getStartDate().compareTo(o2.getStartDate())).get();
 
