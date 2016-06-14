@@ -45,8 +45,15 @@ public class SeasonResource {
 
         for (Team team : leagueService.findAll(Team.class)
                 .parallelStream().filter(r->r.getSeason().equals(season)).collect(Collectors.toList())) {
-            leagueService.purge(team);
+            leagueService.delete(team);
         }
+
+        List<User> users = leagueService.findAll(User.class);
+        for (User user : users) {
+            user.removeHandicap(new HandicapSeason(Handicap.A,season));
+        }
+        leagueService.save(users);
+        leagueService.delete(season);
         return season;
     }
 

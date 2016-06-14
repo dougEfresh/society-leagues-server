@@ -256,9 +256,9 @@ public class ResultService {
                 r -> r.getTeamMatch() != null && r.getTeamMatch().equals(teamMatch)).collect(Collectors.toList());
 
         for (PlayerResult result : toDelete) {
-            leagueService.purge(result);
+            leagueService.delete(result);
         }
-        leagueService.purge(teamMatch);
+        leagueService.delete(teamMatch);
         return true;
     }
 
